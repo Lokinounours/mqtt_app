@@ -29,13 +29,13 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String titleBar = 'MQTT';
-  String broker = 'farmer.cloudmqtt.com';
-  int port = 10934;
-  String username = 'sujrylfw';
-  String password = 'U8Ojrg_LQbwz';
-  String clientIdentifier = 'Pierre';
+  static String broker = 'farmer.cloudmqtt.com';
+  int port = 11494;
+  String username = 'ahrmkjfv';
+  String password = 'pTHp2VqECR1n';
+  String clientIdentifier = 'Thomas';
 
-  MqttClient client;
+  MqttClient client = MqttClient(broker, '');
   MqttConnectionState connectionState;
 
   bool isActiveConnection = false;
@@ -48,12 +48,12 @@ class _MyAppState extends State<MyApp> {
   double _bri = 0.0;
   double _sat = 0.0;
 
-  StreamSubscription<RangingResult> _streamRanging;
+  //StreamSubscription<RangingResult> _streamRanging;
 
   @override
   Widget build(BuildContext context) {
     IconData connectionStateIcon;
-    switch (client?.connectionState) {
+    switch (client.connectionStatus.state) {
       case MqttConnectionState.connected:
         connectionStateIcon = Icons.cloud_done;
         break;
@@ -111,7 +111,7 @@ class _MyAppState extends State<MyApp> {
                       icon: Icon(connectionStateIcon),
                       onPressed: () {
                         setState(
-                          () {
+                              () {
                             (connectionStateIcon == Icons.cloud_done)
                                 ? disconnect()
                                 : connect();
@@ -249,7 +249,7 @@ class _MyAppState extends State<MyApp> {
                           IconButton(
                             icon: Icon(Icons.lightbulb_outline),
                             color:
-                                ledThree ? Colors.purple : Colors.blueGrey[300],
+                            ledThree ? Colors.purple : Colors.blueGrey[300],
                             iconSize: 50,
                             onPressed: () {
                               setState(() {
@@ -293,46 +293,46 @@ class _MyAppState extends State<MyApp> {
         .startClean()
         .keepAliveFor(30)
         .withWillTopic('log')
-        .withWillMessage('Connection From Android App - Pierre')
+        .withWillMessage('Connection From Android App')
         .withWillQos(MqttQos.atLeastOnce);
     print('MQTT client connecting....');
     client.connectionMessage = connMess;
 
-  //   try {
-  //     await client.connect(username, password);
-  //   } catch (e) {
-  //     print(e);
-  //     client.disconnect();
-  //   }
+       try {
+         await client.connect(username, password);
+       } catch (e) {
+         print(e);
+         client.disconnect();
+       }
 
-  //   if (client.connectionState == MqttConnectionState.connected) {
-  //     print('MQTT client connected');
-  //     setState(() {
-  //       connectionState = client.connectionState;
-  //     });
-  //   } else {
-  //     print('ERROR: MQTT client connection failed - '
-  //         'disconnecting, state is ${client.connectionState}');
-  //     client.disconnect();
-  //   }
+       if (client.connectionState == MqttConnectionState.connected) {
+         print('MQTT client connected');
+         setState(() {
+           connectionState = client.connectionState;
+         });
+       } else {
+         print('ERROR: MQTT client connection failed - '
+             'disconnecting, state is ${client.connectionState}');
+         client.disconnect();
+       }
 
-  //   try {
-  //     await flutterBeacon.initializeScanning;
-  //   } catch (e) {}
-  //   final regions = <Region>[];
+    //   try {
+    //     await flutterBeacon.initializeScanning;
+    //   } catch (e) {}
+    //   final regions = <Region>[];
 
-  //   regions.add(Region(identifier: 'com.beacon'));
+    //   regions.add(Region(identifier: 'com.beacon'));
 
-  //   _streamRanging =
-  //       flutterBeacon.ranging(regions).listen((RangingResult result) {
-  //         print(result);
-  //       });
+    //   _streamRanging =
+    //       flutterBeacon.ranging(regions).listen((RangingResult result) {
+    //         print(result);
+    //       });
   }
 
   void disconnect() {
     const String pubTopic = 'log';
     final MqttClientPayloadBuilder builder = MqttClientPayloadBuilder();
-    builder.addString('Deconnection From Android App - Pierre');
+    builder.addString('Deconnection From Android App');
     client.subscribe(pubTopic, MqttQos.atLeastOnce);
     client.publishMessage(pubTopic, MqttQos.atLeastOnce, builder.payload);
     client.unsubscribe(pubTopic);
