@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:quiver/async.dart';
 
 import 'package:flutter/material.dart';
 import 'package:mqtt_client/mqtt_client.dart';
@@ -51,29 +52,109 @@ class _MyAppState extends State<MyApp> {
   bool ledThree = true;
 
   StatusBlue one = StatusBlue.unavailable;
-  int oneScan = 0;
   StatusBlue two = StatusBlue.unavailable;
-  int twoScan = 0;
   StatusBlue three = StatusBlue.unavailable;
-  int threeScan = 0;
+
+  int time1 = 5;
+  bool act1 = false;
+  int time2 = 5;
+  bool act2 = false;
+  int time3 = 5;
+  bool act3 = false;
+
+  void startTimer1() {
+    int _start1 = 5;
+    act1 = true;
+    time1 = _start1;
+    CountdownTimer countDownTimer1 = new CountdownTimer(
+      new Duration(seconds: _start1),
+      new Duration(seconds: 1),
+    );
+
+    var sub = countDownTimer1.listen(null);
+    sub.onData((duration) {
+      setState(() {
+        time1 = _start1 - duration.elapsed.inSeconds;
+        print('1: $time1   2: $time2   3: $time3');
+      });
+    });
+
+    sub.onDone(() {
+      print("Done");
+      sub.cancel();
+      // time1 = 5;
+      // act1 = false;
+    });
+  }
+
+  void startTimer2() {
+    int _start2 = 5;
+    act2 = true;
+    time2 = _start2;
+    CountdownTimer countDownTimer2 = new CountdownTimer(
+      new Duration(seconds: _start2),
+      new Duration(seconds: 1),
+    );
+
+    var sub = countDownTimer2.listen(null);
+    sub.onData((duration) {
+      setState(() {
+        time2 = _start2 - duration.elapsed.inSeconds;
+        print('1: $time1   2: $time2   3: $time3');
+      });
+    });
+
+    sub.onDone(() {
+      print("Done");
+      sub.cancel();
+      // time2 = 5;
+      // act2 = false;
+    });
+  }
+
+  void startTimer3() {
+    int _start3 = 5;
+    act3 = true;
+    time3 = _start3;
+    CountdownTimer countDownTimer3 = new CountdownTimer(
+      new Duration(seconds: _start3),
+      new Duration(seconds: 1),
+    );
+
+    var sub = countDownTimer3.listen(null);
+    sub.onData((duration) {
+      setState(() {
+        time3 = _start3 - duration.elapsed.inSeconds;
+        print('1: $time1   2: $time2   3: $time3');
+      });
+    });
+
+    sub.onDone(() {
+      print("Done");
+      sub.cancel();
+      // time3 = 5;
+      // act3 = false;
+    });
+  }
 
   double _rating = 0.0;
   double _bri = 0.0;
   double _sat = 0.0;
 
-  int scan = 0;
   StreamSubscription<RangingResult> _streamRanging;
   Map lampMap = Map();
 
   @override
   void initState() {
-    iniScan();
-    startScanning();
     super.initState();
+    startScanning();
+    connect();
+    print("END INITSTATE");
   }
 
   @override
   Widget build(BuildContext context) {
+    // startScanning();
     IconData connectionStateIcon;
     switch (client.connectionStatus.state) {
       case MqttConnectionState.connected:
@@ -365,6 +446,29 @@ class _MyAppState extends State<MyApp> {
                       },
                       child: Text('Submit Request'),
                     ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        IconButton(
+                          icon: Icon(Icons.add),
+                          onPressed: () {
+                            startTimer1();
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.add),
+                          onPressed: () {
+                            startTimer2();
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.add),
+                          onPressed: () {
+                            startTimer3();
+                          },
+                        )
+                      ],
+                    )
                   ],
                 ),
               ),
@@ -431,29 +535,19 @@ class _MyAppState extends State<MyApp> {
     // client.unsubscribe(pubTopic);
   }
 
-  void iniScan() async {
+  void startScanning() async {
     try {
       await flutterBeacon.initializeAndCheckScanning;
     } catch (e) {}
-  }
 
-  void startScanning() {
     final regions = <Region>[];
 
     regions.add(Region(identifier: 'com.beacon'));
 
     _streamRanging = flutterBeacon.ranging(regions).listen(
       (RangingResult result) {
-        print(result.beacons.length);
+        // print(result.beacons.length);
         for (int i = 0; i < result.beacons.length; i++) {
-          // if (result.beacons[i].proximity.toString() == 'near' ||
-          //     result.beacons[i].proximity.toString() == 'immediate' ||
-          //     result.beacons[i].proximity.toString() ==
-          //         'far')
-          // {
-          //   if (result.beacons[i].proximityUUID != null) {
-          //   }
-          // }
           if (result.beacons[i].proximity != Proximity.unknown) {
             lampMap[result.beacons[i].proximityUUID] =
                 result.beacons[i].proximity;
@@ -488,32 +582,40 @@ class _MyAppState extends State<MyApp> {
             }
           }
         }
-        scan++;
-        // if (scan == 10) _streamRanging.cancel();
-        if (scan == 20) {
-          if (!lampMap.containsKey("64827394-8273-9483-6294-749297482928")) {
+        if (!lampMap.containsKey("64827394-8273-9483-6294-749297482928")) {
+          if (!act1) startTimer1();
+          if (time1 == 0) {
             setState(() {
               // print("Beacon one Lost");
               one = StatusBlue.unavailable;
             });
+            time1 = 5;
+            act1 = false;
           }
-          if (!lampMap.containsKey("00000000-0000-0008-4849-300000000000")) {
+        }
+        if (!lampMap.containsKey("00000000-0000-0008-4849-300000000000")) {
+          if (!act2) startTimer2();
+          if (time2 == 0) {
             setState(() {
-              // print("Beacon two lost");
+              // print("Beacon one Lost");
               two = StatusBlue.unavailable;
             });
+            time2 = 5;
+            act2 = false;
           }
-          if (!lampMap.containsKey("99999999-9999-0000-0000-000000000000")) {
+        }
+        if (!lampMap.containsKey("99999999-9999-0000-0000-000000000000")) {
+          if (!act3) startTimer3();
+          if (time3 == 0) {
             setState(() {
-              // print("Beacon three lost");
+              // print("Beacon one Lost");
               three = StatusBlue.unavailable;
             });
+            time3 = 5;
+            act3 = false;
           }
-          // printMap();
-          print('20 Scan Done Clearing inc');
-          lampMap.clear();
-          scan = 0;
         }
+        lampMap.clear();
       },
     );
   }
