@@ -1,5 +1,7 @@
 import 'dart:async';
-import 'package:quiver/async.dart';
+import 'package:quiver/async.dart'; // Timer package
+
+import 'package:collection/collection.dart'; // Compare Natural for the topic Bloc
 
 import 'package:flutter/material.dart';
 import 'package:mqtt_client/mqtt_client.dart';
@@ -9,6 +11,14 @@ enum StatusBlue {
   unavailable,
   available,
   selected,
+}
+
+class Message {
+  final String topic;
+  final String message;
+  final MqttQos qos;
+
+  Message({this.topic, this.message, this.qos});
 }
 
 void main() => runApp(App());
@@ -37,9 +47,9 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   String titleBar = 'MQTT';
   String broker = 'farmer.cloudmqtt.com';
-  int port = 11494;
-  String username = 'ahrmkjfv';
-  String password = 'pTHp2VqECR1n';
+  int port = 10934;
+  String username = 'sujrylfw';
+  String password = 'U8Ojrg_LQbwz';
   String clientIdentifier = 'Pierre';
 
   MqttClient client;
@@ -55,15 +65,30 @@ class _MyAppState extends State<MyApp> {
   StatusBlue two = StatusBlue.unavailable;
   StatusBlue three = StatusBlue.unavailable;
 
-  int time1 = 5;
+  int time1 = 8;
   bool act1 = false;
-  int time2 = 5;
+  int time2 = 8;
   bool act2 = false;
-  int time3 = 5;
+  int time3 = 8;
   bool act3 = false;
 
+  double _rating = 0.0;
+  double _bri = 0.0;
+  double _sat = 0.0;
+
+  StreamSubscription<RangingResult> _streamRanging;
+  Map lampMap = Map();
+
+  StreamSubscription subscription;
+
+  Set<String> topics = Set<String>();
+
+  List<Message> messages = <Message>[];
+
+  ScrollController messageController = ScrollController();
+
   void startTimer1() {
-    int _start1 = 5;
+    int _start1 = 8;
     act1 = true;
     time1 = _start1;
     CountdownTimer countDownTimer1 = new CountdownTimer(
@@ -75,12 +100,12 @@ class _MyAppState extends State<MyApp> {
     sub.onData((duration) {
       setState(() {
         time1 = _start1 - duration.elapsed.inSeconds;
-        //print('1: $time1   2: $time2   3: $time3');
+        // print('1: $time1   2: $time2   3: $time3');
       });
     });
 
     sub.onDone(() {
-      //print("Done");
+      // print("Done");
       sub.cancel();
       // time1 = 5;
       // act1 = false;
@@ -88,7 +113,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void startTimer2() {
-    int _start2 = 5;
+    int _start2 = 8;
     act2 = true;
     time2 = _start2;
     CountdownTimer countDownTimer2 = new CountdownTimer(
@@ -100,12 +125,12 @@ class _MyAppState extends State<MyApp> {
     sub.onData((duration) {
       setState(() {
         time2 = _start2 - duration.elapsed.inSeconds;
-        //print('1: $time1   2: $time2   3: $time3');
+        // print('1: $time1   2: $time2   3: $time3');
       });
     });
 
     sub.onDone(() {
-      //print("Done");
+      // print("Done");
       sub.cancel();
       // time2 = 5;
       // act2 = false;
@@ -113,7 +138,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void startTimer3() {
-    int _start3 = 5;
+    int _start3 = 8;
     act3 = true;
     time3 = _start3;
     CountdownTimer countDownTimer3 = new CountdownTimer(
@@ -125,24 +150,17 @@ class _MyAppState extends State<MyApp> {
     sub.onData((duration) {
       setState(() {
         time3 = _start3 - duration.elapsed.inSeconds;
-        //print('1: $time1   2: $time2   3: $time3');
+        // print('1: $time1   2: $time2   3: $time3');
       });
     });
 
     sub.onDone(() {
-      //print("Done");
+      // print("Done");
       sub.cancel();
       // time3 = 5;
       // act3 = false;
     });
   }
-
-  double _rating = 0.0;
-  double _bri = 0.0;
-  double _sat = 0.0;
-
-  StreamSubscription<RangingResult> _streamRanging;
-  Map lampMap = Map();
 
   @override
   void initState() {
@@ -203,7 +221,7 @@ class _MyAppState extends State<MyApp> {
             physics: BouncingScrollPhysics(),
             children: <Widget>[
               Card(
-                margin: EdgeInsets.all(10),
+                margin: EdgeInsets.all(5),
                 color: (connectionStateIcon == Icons.cloud_done)
                     ? Colors.blueGrey[00]
                     : Colors.blueGrey[100],
@@ -228,11 +246,8 @@ class _MyAppState extends State<MyApp> {
                   ],
                 ),
               ),
-              SizedBox(
-                height: 5,
-              ),
               Card(
-                margin: EdgeInsets.all(10),
+                margin: EdgeInsets.all(5),
                 color: (connectionStateIcon == Icons.cloud_done)
                     ? Colors.blueGrey[00]
                     : Colors.blueGrey[100],
@@ -334,13 +349,10 @@ class _MyAppState extends State<MyApp> {
                                   : Colors.blueGrey[300],
                               iconSize: 50,
                               onPressed: () {
-                                if(one == StatusBlue.available || one == StatusBlue.selected) {
-                                  setState(() {
-                                    sendMessage(
-                                        topicLed, ledOne ? '1 0' : '1 1');
-                                    ledOne = !ledOne;
-                                  });
-                                }
+                                setState(() {
+                                  sendMessage(topicLed, ledOne ? '1 0' : '1 1');
+                                  ledOne = !ledOne;
+                                });
                               },
                             ),
                             IconButton(
@@ -348,12 +360,10 @@ class _MyAppState extends State<MyApp> {
                               color: ledTwo ? Colors.red : Colors.blueGrey[300],
                               iconSize: 50,
                               onPressed: () {
-                                if(two == StatusBlue.available || two == StatusBlue.selected) {
-                                  setState(() {
-                                    sendMessage(topicLed, ledTwo ? '2 0' : '2 1');
-                                    ledTwo = !ledTwo;
-                                  });
-                                }
+                                setState(() {
+                                  sendMessage(topicLed, ledTwo ? '2 0' : '2 1');
+                                  ledTwo = !ledTwo;
+                                });
                               },
                             ),
                             IconButton(
@@ -363,13 +373,11 @@ class _MyAppState extends State<MyApp> {
                                   : Colors.blueGrey[300],
                               iconSize: 50,
                               onPressed: () {
-                                if(three == StatusBlue.available || three == StatusBlue.selected) {
-                                  setState(() {
-                                    sendMessage(
-                                        topicLed, ledThree ? '3 0' : '3 1');
-                                    ledThree = !ledThree;
-                                  });
-                                }
+                                setState(() {
+                                  sendMessage(
+                                      topicLed, ledThree ? '3 0' : '3 1');
+                                  ledThree = !ledThree;
+                                });
                               },
                             ),
                           ],
@@ -391,8 +399,6 @@ class _MyAppState extends State<MyApp> {
                                     one = StatusBlue.selected;
                                   else if (one == StatusBlue.selected)
                                     one = StatusBlue.available;
-                                  // sendMessage(topicLed, ledOne ? '1 0' : '1 1');
-                                  // ledOne = !ledOne;
                                 });
                               },
                             ),
@@ -410,8 +416,6 @@ class _MyAppState extends State<MyApp> {
                                     two = StatusBlue.selected;
                                   else if (two == StatusBlue.selected)
                                     two = StatusBlue.available;
-                                  // sendMessage(topicLed, ledOne ? '1 0' : '1 1');
-                                  // ledOne = !ledOne;
                                 });
                               },
                             ),
@@ -429,8 +433,6 @@ class _MyAppState extends State<MyApp> {
                                     three = StatusBlue.selected;
                                   else if (three == StatusBlue.selected)
                                     three = StatusBlue.available;
-                                  // sendMessage(topicLed, ledOne ? '1 0' : '1 1');
-                                  // ledOne = !ledOne;
                                 });
                               },
                             ),
@@ -453,29 +455,13 @@ class _MyAppState extends State<MyApp> {
                       },
                       child: Text('Submit Request'),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: <Widget>[
-                        IconButton(
-                          icon: Icon(Icons.add),
-                          onPressed: () {
-                            startTimer1();
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.add),
-                          onPressed: () {
-                            startTimer2();
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.add),
-                          onPressed: () {
-                            startTimer3();
-                          },
-                        )
-                      ],
-                    )
+                    Container(
+                      height: 225,
+                      child: Card(
+                        color: Colors.blueGrey[100],
+                        child: _buildMessagesPage(),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -521,6 +507,9 @@ class _MyAppState extends State<MyApp> {
           'disconnecting, state is ${client.connectionStatus.state}');
       client.disconnect();
     }
+
+    _subscribeToTopic('test');
+    subscription = client.updates.listen(_onMessage);
   }
 
   void disconnect() {
@@ -553,7 +542,7 @@ class _MyAppState extends State<MyApp> {
 
     _streamRanging = flutterBeacon.ranging(regions).listen(
       (RangingResult result) {
-        //print(result.beacons.length);
+        // print(result.beacons.length);
         for (int i = 0; i < result.beacons.length; i++) {
           if (result.beacons[i].proximity != Proximity.unknown) {
             lampMap[result.beacons[i].proximityUUID] =
@@ -596,7 +585,7 @@ class _MyAppState extends State<MyApp> {
               // print("Beacon one Lost");
               one = StatusBlue.unavailable;
             });
-            time1 = 5;
+            time1 = 8;
             act1 = false;
           }
         }
@@ -607,7 +596,7 @@ class _MyAppState extends State<MyApp> {
               // print("Beacon one Lost");
               two = StatusBlue.unavailable;
             });
-            time2 = 5;
+            time2 = 8;
             act2 = false;
           }
         }
@@ -618,7 +607,7 @@ class _MyAppState extends State<MyApp> {
               // print("Beacon one Lost");
               three = StatusBlue.unavailable;
             });
-            time3 = 5;
+            time3 = 8;
             act3 = false;
           }
         }
@@ -630,5 +619,114 @@ class _MyAppState extends State<MyApp> {
   void printMap() {
     if (lampMap.isNotEmpty)
       lampMap.forEach((i, j) => print('Key: $i and Value: $j'));
+  }
+
+  Column _buildMessagesPage() {
+    return Column(
+      children: <Widget>[
+        Expanded(
+          child: ListView(
+            controller: messageController,
+            children: _buildMessageList(),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: RaisedButton(
+            child: Text('Clear'),
+            onPressed: () {
+              setState(() {
+                messages.clear();
+              });
+            },
+          ),
+        )
+      ],
+    );
+  }
+
+  List<Widget> _buildMessageList() {
+    return messages
+        .map((Message message) => Card(
+              color: Colors.white70,
+              child: ListTile(
+                trailing: CircleAvatar(
+                    radius: 14.0,
+                    backgroundColor: Theme.of(context).accentColor,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Text(
+                          'QoS',
+                          style: TextStyle(fontSize: 8.0),
+                        ),
+                        Text(
+                          message.qos.index.toString(),
+                          style: TextStyle(fontSize: 8.0),
+                        ),
+                      ],
+                    )),
+                title: Text(message.topic),
+                subtitle: Text(message.message),
+                dense: true,
+              ),
+            ))
+        .toList()
+        .reversed
+        .toList();
+  }
+
+  void _onMessage(List<MqttReceivedMessage> event) {
+    print(event.length);
+    final MqttPublishMessage recMess = event[0].payload as MqttPublishMessage;
+    final String message =
+        MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+
+    /// The above may seem a little convoluted for users only interested in the
+    /// payload, some users however may be interested in the received publish message,
+    /// lets not constrain ourselves yet until the package has been in the wild
+    /// for a while.
+    /// The payload is a byte buffer, this will be specific to the topic
+    print('MQTT message: topic is <${event[0].topic}>, '
+        'payload is <-- ${message} -->');
+    print(client.connectionStatus.state);
+    setState(() {
+      messages.add(Message(
+        topic: event[0].topic,
+        message: message,
+        qos: recMess.payload.header.qos,
+      ));
+      try {
+        messageController.animateTo(
+          0.0,
+          duration: Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        );
+      } catch (_) {
+        // ScrollController not attached to any scroll views.
+      }
+    });
+  }
+
+  void _subscribeToTopic(String topic) {
+    if (connectionState == MqttConnectionState.connected) {
+      setState(() {
+        if (topics.add(topic.trim())) {
+          print('Subscribing to ${topic.trim()}');
+          client.subscribe(topic, MqttQos.exactlyOnce);
+        }
+      });
+    }
+  }
+
+  void _unsubscribeFromTopic(String topic) {
+    if (connectionState == MqttConnectionState.connected) {
+      setState(() {
+        if (topics.remove(topic.trim())) {
+          print('Unsubscribing from ${topic.trim()}');
+          client.unsubscribe(topic);
+        }
+      });
+    }
   }
 }
