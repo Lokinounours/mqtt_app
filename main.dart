@@ -47,9 +47,9 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   String titleBar = 'MQTT';
   String broker = 'farmer.cloudmqtt.com';
-  int port = 10934;
-  String username = 'sujrylfw';
-  String password = 'U8Ojrg_LQbwz';
+  int port = 11494;
+  String username = 'ahrmkjfv';
+  String password = 'pTHp2VqECR1n';
   String clientIdentifier = 'Pierre';
 
   MqttClient client;
@@ -65,11 +65,11 @@ class _MyAppState extends State<MyApp> {
   StatusBlue two = StatusBlue.unavailable;
   StatusBlue three = StatusBlue.unavailable;
 
-  int time1 = 8;
+  int time1 = 5;
   bool act1 = false;
-  int time2 = 8;
+  int time2 = 5;
   bool act2 = false;
-  int time3 = 8;
+  int time3 = 5;
   bool act3 = false;
 
   double _rating = 0.0;
@@ -88,7 +88,7 @@ class _MyAppState extends State<MyApp> {
   ScrollController messageController = ScrollController();
 
   void startTimer1() {
-    int _start1 = 8;
+    int _start1 = 5;
     act1 = true;
     time1 = _start1;
     CountdownTimer countDownTimer1 = new CountdownTimer(
@@ -100,20 +100,22 @@ class _MyAppState extends State<MyApp> {
     sub.onData((duration) {
       setState(() {
         time1 = _start1 - duration.elapsed.inSeconds;
-        // print('1: $time1   2: $time2   3: $time3');
+        if(!act1) {
+          sub.cancel();
+        }
       });
     });
 
     sub.onDone(() {
-      // print("Done");
-      sub.cancel();
-      // time1 = 5;
-      // act1 = false;
+      setState(() {
+        one = StatusBlue.unavailable;
+        sub.cancel();
+      });
     });
   }
 
   void startTimer2() {
-    int _start2 = 8;
+    int _start2 = 5;
     act2 = true;
     time2 = _start2;
     CountdownTimer countDownTimer2 = new CountdownTimer(
@@ -125,20 +127,22 @@ class _MyAppState extends State<MyApp> {
     sub.onData((duration) {
       setState(() {
         time2 = _start2 - duration.elapsed.inSeconds;
-        // print('1: $time1   2: $time2   3: $time3');
+        if(!act2) {
+          sub.cancel();
+        }
       });
     });
 
     sub.onDone(() {
-      // print("Done");
-      sub.cancel();
-      // time2 = 5;
-      // act2 = false;
+      setState(() {
+        two = StatusBlue.unavailable;
+        sub.cancel();
+      });
     });
   }
 
   void startTimer3() {
-    int _start3 = 8;
+    int _start3 = 5;
     act3 = true;
     time3 = _start3;
     CountdownTimer countDownTimer3 = new CountdownTimer(
@@ -150,15 +154,17 @@ class _MyAppState extends State<MyApp> {
     sub.onData((duration) {
       setState(() {
         time3 = _start3 - duration.elapsed.inSeconds;
-        // print('1: $time1   2: $time2   3: $time3');
+        if(!act3) {
+          sub.cancel();
+        }
       });
     });
 
     sub.onDone(() {
-      // print("Done");
-      sub.cancel();
-      // time3 = 5;
-      // act3 = false;
+      setState(() {
+        three = StatusBlue.unavailable;
+        sub.cancel();
+      });
     });
   }
 
@@ -349,10 +355,13 @@ class _MyAppState extends State<MyApp> {
                                   : Colors.blueGrey[300],
                               iconSize: 50,
                               onPressed: () {
-                                setState(() {
-                                  sendMessage(topicLed, ledOne ? '1 0' : '1 1');
-                                  ledOne = !ledOne;
-                                });
+                                if(one == StatusBlue.available || one == StatusBlue.selected) {
+                                  setState(() {
+                                    sendMessage(
+                                        topicLed, ledOne ? '1 0' : '1 1');
+                                    ledOne = !ledOne;
+                                  });
+                                }
                               },
                             ),
                             IconButton(
@@ -360,10 +369,12 @@ class _MyAppState extends State<MyApp> {
                               color: ledTwo ? Colors.red : Colors.blueGrey[300],
                               iconSize: 50,
                               onPressed: () {
-                                setState(() {
-                                  sendMessage(topicLed, ledTwo ? '2 0' : '2 1');
-                                  ledTwo = !ledTwo;
-                                });
+                                if(two == StatusBlue.available || two == StatusBlue.selected) {
+                                  setState(() {
+                                    sendMessage(topicLed, ledTwo ? '2 0' : '2 1');
+                                    ledTwo = !ledTwo;
+                                  });
+                                }
                               },
                             ),
                             IconButton(
@@ -373,11 +384,13 @@ class _MyAppState extends State<MyApp> {
                                   : Colors.blueGrey[300],
                               iconSize: 50,
                               onPressed: () {
-                                setState(() {
-                                  sendMessage(
-                                      topicLed, ledThree ? '3 0' : '3 1');
-                                  ledThree = !ledThree;
-                                });
+                                if(three == StatusBlue.available || three == StatusBlue.selected) {
+                                  setState(() {
+                                    sendMessage(
+                                        topicLed, ledThree ? '3 0' : '3 1');
+                                    ledThree = !ledThree;
+                                  });
+                                }
                               },
                             ),
                           ],
@@ -541,8 +554,9 @@ class _MyAppState extends State<MyApp> {
     regions.add(Region(identifier: 'com.beacon'));
 
     _streamRanging = flutterBeacon.ranging(regions).listen(
-      (RangingResult result) {
-        // print(result.beacons.length);
+          (RangingResult result) {
+        print('1: $time1   2: $time2   3: $time3');
+        //print(result.beacons.length);
         for (int i = 0; i < result.beacons.length; i++) {
           if (result.beacons[i].proximity != Proximity.unknown) {
             lampMap[result.beacons[i].proximityUUID] =
@@ -550,29 +564,35 @@ class _MyAppState extends State<MyApp> {
             switch (result.beacons[i].proximityUUID) {
               case "64827394-8273-9483-6294-749297482928":
                 {
-                  if (one == StatusBlue.unavailable)
+                  if (one == StatusBlue.unavailable) {
                     setState(() {
                       one = StatusBlue.available;
-                      // print("First beacon");
                     });
+                  }
+                  act1 = false;
+                  //print("First beacon");
                 }
                 break;
               case "00000000-0000-0008-4849-300000000000":
                 {
-                  if (two == StatusBlue.unavailable)
+                  if (two == StatusBlue.unavailable) {
                     setState(() {
                       two = StatusBlue.available;
-                      // print("Second beacon");
                     });
+                  }
+                  act2 = false;
+                  //print("Second beacon");
                 }
                 break;
               case "99999999-9999-0000-0000-000000000000":
                 {
-                  if (three == StatusBlue.unavailable)
+                  if (three == StatusBlue.unavailable) {
                     setState(() {
                       three = StatusBlue.available;
-                      // print("Third beacon");
                     });
+                  }
+                  act3 = false;
+                  //print("Third beacon");
                 }
                 break;
             }
@@ -580,36 +600,12 @@ class _MyAppState extends State<MyApp> {
         }
         if (!lampMap.containsKey("64827394-8273-9483-6294-749297482928")) {
           if (!act1) startTimer1();
-          if (time1 == 0) {
-            setState(() {
-              // print("Beacon one Lost");
-              one = StatusBlue.unavailable;
-            });
-            time1 = 8;
-            act1 = false;
-          }
         }
         if (!lampMap.containsKey("00000000-0000-0008-4849-300000000000")) {
           if (!act2) startTimer2();
-          if (time2 == 0) {
-            setState(() {
-              // print("Beacon one Lost");
-              two = StatusBlue.unavailable;
-            });
-            time2 = 8;
-            act2 = false;
-          }
         }
         if (!lampMap.containsKey("99999999-9999-0000-0000-000000000000")) {
           if (!act3) startTimer3();
-          if (time3 == 0) {
-            setState(() {
-              // print("Beacon one Lost");
-              three = StatusBlue.unavailable;
-            });
-            time3 = 8;
-            act3 = false;
-          }
         }
         lampMap.clear();
       },
