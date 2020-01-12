@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:quiver/async.dart'; // Timer package
 
-import 'package:collection/collection.dart'; // Compare Natural for the topic Bloc
+// import 'package:collection/collection.dart'; // Compare Natural for the topic Bloc
 
 import 'package:flutter/material.dart';
 import 'package:mqtt_client/mqtt_client.dart';
@@ -14,11 +14,20 @@ enum StatusBlue {
 }
 
 class Message {
-  final String topic;
-  final String message;
-  final MqttQos qos;
+  String topic;
+  String message;
+  MqttQos qos;
 
   Message({this.topic, this.message, this.qos});
+}
+
+class Lamp {
+  String state;
+  String bri;
+  String hue;
+  String sat;
+
+  Lamp({this.state, this.bri, this.hue, this.sat});
 }
 
 void main() => runApp(App());
@@ -83,12 +92,18 @@ class _MyAppState extends State<MyApp> {
 
   Set<String> topics = Set<String>();
 
-  List<Message> messages = <Message>[];
+  Message messages =
+      Message(topic: "empty", message: "empty", qos: MqttQos.failure);
+  List<Lamp> listLamp = [
+    Lamp(state: "", bri: "", hue: "", sat: ""),
+    Lamp(state: "", bri: "", hue: "", sat: ""),
+    Lamp(state: "", bri: "", hue: "", sat: "")
+  ];
 
   ScrollController messageController = ScrollController();
 
   void startTimer1() {
-    int _start1 = 5;
+    int _start1 = 8;
     act1 = true;
     time1 = _start1;
     CountdownTimer countDownTimer1 = new CountdownTimer(
@@ -100,7 +115,7 @@ class _MyAppState extends State<MyApp> {
     sub.onData((duration) {
       setState(() {
         time1 = _start1 - duration.elapsed.inSeconds;
-        if(!act1) {
+        if (!act1) {
           sub.cancel();
         }
       });
@@ -115,7 +130,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void startTimer2() {
-    int _start2 = 5;
+    int _start2 = 8;
     act2 = true;
     time2 = _start2;
     CountdownTimer countDownTimer2 = new CountdownTimer(
@@ -127,7 +142,7 @@ class _MyAppState extends State<MyApp> {
     sub.onData((duration) {
       setState(() {
         time2 = _start2 - duration.elapsed.inSeconds;
-        if(!act2) {
+        if (!act2) {
           sub.cancel();
         }
       });
@@ -142,7 +157,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void startTimer3() {
-    int _start3 = 5;
+    int _start3 = 8;
     act3 = true;
     time3 = _start3;
     CountdownTimer countDownTimer3 = new CountdownTimer(
@@ -154,7 +169,7 @@ class _MyAppState extends State<MyApp> {
     sub.onData((duration) {
       setState(() {
         time3 = _start3 - duration.elapsed.inSeconds;
-        if(!act3) {
+        if (!act3) {
           sub.cancel();
         }
       });
@@ -166,6 +181,13 @@ class _MyAppState extends State<MyApp> {
         sub.cancel();
       });
     });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    subscription.cancel();
+    _streamRanging.cancel();
   }
 
   @override
@@ -355,7 +377,8 @@ class _MyAppState extends State<MyApp> {
                                   : Colors.blueGrey[300],
                               iconSize: 50,
                               onPressed: () {
-                                if(one == StatusBlue.available || one == StatusBlue.selected) {
+                                if (one == StatusBlue.available ||
+                                    one == StatusBlue.selected) {
                                   setState(() {
                                     sendMessage(
                                         topicLed, ledOne ? '1 0' : '1 1');
@@ -369,9 +392,11 @@ class _MyAppState extends State<MyApp> {
                               color: ledTwo ? Colors.red : Colors.blueGrey[300],
                               iconSize: 50,
                               onPressed: () {
-                                if(two == StatusBlue.available || two == StatusBlue.selected) {
+                                if (two == StatusBlue.available ||
+                                    two == StatusBlue.selected) {
                                   setState(() {
-                                    sendMessage(topicLed, ledTwo ? '2 0' : '2 1');
+                                    sendMessage(
+                                        topicLed, ledTwo ? '2 0' : '2 1');
                                     ledTwo = !ledTwo;
                                   });
                                 }
@@ -384,7 +409,8 @@ class _MyAppState extends State<MyApp> {
                                   : Colors.blueGrey[300],
                               iconSize: 50,
                               onPressed: () {
-                                if(three == StatusBlue.available || three == StatusBlue.selected) {
+                                if (three == StatusBlue.available ||
+                                    three == StatusBlue.selected) {
                                   setState(() {
                                     sendMessage(
                                         topicLed, ledThree ? '3 0' : '3 1');
@@ -468,14 +494,13 @@ class _MyAppState extends State<MyApp> {
                       },
                       child: Text('Submit Request'),
                     ),
-                    Container(
-                      height: 225,
-                      child: Card(
-                        color: Colors.blueGrey[100],
-                        child: _buildMessagesPage(),
-                      ),
-                    ),
                   ],
+                ),
+              ),
+              Container(
+                child: Card(
+                  color: Colors.blueGrey[100],
+                  child: _buildMessagesPage(),
                 ),
               ),
             ],
@@ -522,7 +547,7 @@ class _MyAppState extends State<MyApp> {
     }
 
     _subscribeToTopic('test');
-    subscription = client.updates.listen(_onMessage);
+    subscription = client.updates.listen(messageReact);
   }
 
   void disconnect() {
@@ -554,13 +579,14 @@ class _MyAppState extends State<MyApp> {
     regions.add(Region(identifier: 'com.beacon'));
 
     _streamRanging = flutterBeacon.ranging(regions).listen(
-          (RangingResult result) {
-        print('1: $time1   2: $time2   3: $time3');
+      (RangingResult result) {
+        // print('1: $time1   2: $time2   3: $time3');
         //print(result.beacons.length);
         for (int i = 0; i < result.beacons.length; i++) {
           if (result.beacons[i].proximity != Proximity.unknown) {
             lampMap[result.beacons[i].proximityUUID] =
                 result.beacons[i].proximity;
+
             switch (result.beacons[i].proximityUUID) {
               case "64827394-8273-9483-6294-749297482928":
                 {
@@ -619,89 +645,151 @@ class _MyAppState extends State<MyApp> {
 
   Column _buildMessagesPage() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Expanded(
-          child: ListView(
-            controller: messageController,
-            children: _buildMessageList(),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: RaisedButton(
-            child: Text('Clear'),
-            onPressed: () {
-              setState(() {
-                messages.clear();
-              });
-            },
-          ),
-        )
+        lampToWidget(0),
+        lampToWidget(1),
+        lampToWidget(2),
       ],
     );
   }
 
-  List<Widget> _buildMessageList() {
-    return messages
-        .map((Message message) => Card(
-              color: Colors.white70,
-              child: ListTile(
-                trailing: CircleAvatar(
-                    radius: 14.0,
-                    backgroundColor: Theme.of(context).accentColor,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Text(
-                          'QoS',
-                          style: TextStyle(fontSize: 8.0),
-                        ),
-                        Text(
-                          message.qos.index.toString(),
-                          style: TextStyle(fontSize: 8.0),
-                        ),
-                      ],
-                    )),
-                title: Text(message.topic),
-                subtitle: Text(message.message),
-                dense: true,
+  Widget lampToWidget(int i) {
+    bool tmpBool;
+    Color tmpColor;
+    StatusBlue tmpStatue;
+    switch (i) {
+      case 0:
+        tmpBool = ledOne;
+        tmpColor = Colors.lightBlue;
+        tmpStatue = one;
+        break;
+      case 1:
+        tmpBool = ledTwo;
+        tmpColor = Colors.red;
+        tmpStatue = two;
+        break;
+      case 2:
+        tmpBool = ledThree;
+        tmpColor = Colors.purple;
+        tmpStatue = three;
+        break;
+    }
+    return Container(
+      child: Card(
+        child: Padding(
+          padding: EdgeInsets.all(10),
+          child: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Text(
+                    "Lamp ${i + 1}",
+                    style: TextStyle(fontSize: 35, fontFamily: 'Montserrat'),
+                  ),
+                  Icon(
+                    Icons.lightbulb_outline,
+                    color: tmpBool ? tmpColor : Colors.blueGrey[300],
+                    size: 35,
+                  ),
+                ],
               ),
-            ))
-        .toList()
-        .reversed
-        .toList();
+              Container(
+                  margin: EdgeInsets.only(left: 45),
+                  child: Row(
+                    children: <Widget>[
+                      Icon(
+                        ((tmpStatue == StatusBlue.unavailable)
+                            ? Icons.check_circle_outline
+                            : Icons.check_circle),
+                        color: tmpStatue == StatusBlue.selected
+                            ? tmpColor
+                            : Colors.blueGrey[300],
+                        size: 35,
+                      ),
+                      Container(
+                        margin: EdgeInsets.only(left: 95),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              "State: ${listLamp[i].state}",
+                              style: TextStyle(
+                                  fontSize: 18, fontFamily: 'Montserrat'),
+                            ),
+                            Text(
+                              "Bri:     ${listLamp[i].bri}",
+                              style: TextStyle(
+                                  fontSize: 18, fontFamily: 'Montserrat'),
+                            ),
+                            Text(
+                              "Hue:  ${listLamp[i].hue}",
+                              style: TextStyle(
+                                  fontSize: 18, fontFamily: 'Montserrat'),
+                            ),
+                            Text(
+                              "Sat:    ${listLamp[i].sat}",
+                              style: TextStyle(
+                                  fontSize: 18, fontFamily: 'Montserrat'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ))
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  void _onMessage(List<MqttReceivedMessage> event) {
-    print(event.length);
-    final MqttPublishMessage recMess = event[0].payload as MqttPublishMessage;
-    final String message =
-        MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+  void messageToLamp(String inc) {
 
-    /// The above may seem a little convoluted for users only interested in the
-    /// payload, some users however may be interested in the received publish message,
-    /// lets not constrain ourselves yet until the package has been in the wild
-    /// for a while.
-    /// The payload is a byte buffer, this will be specific to the topic
-    print('MQTT message: topic is <${event[0].topic}>, '
-        'payload is <-- ${message} -->');
-    print(client.connectionStatus.state);
-    setState(() {
-      messages.add(Message(
-        topic: event[0].topic,
-        message: message,
-        qos: recMess.payload.header.qos,
-      ));
-      try {
-        messageController.animateTo(
-          0.0,
-          duration: Duration(milliseconds: 400),
-          curve: Curves.easeOut,
-        );
-      } catch (_) {
-        // ScrollController not attached to any scroll views.
+    String message = inc;
+    Lamp tmp = Lamp();
+    String value = "";
+    List<String> valueLamp = List<String>(5);
+    int space = 0;
+    String lampNumber = message.substring(0, 1);
+    for (int i = 3; i < message.length; i++) {
+      if (space == 5) {
+        break;
+      } else if (message[i] != " ") {
+        value += message[i];
+      } else {
+        valueLamp[space] = value;
+        value = "";
+        space++;
       }
-    });
+    }
+
+    for (int i = 0; i < valueLamp.length; i++) {
+      switch (i) {
+        case 0:
+          tmp.state = valueLamp[i];
+          break;
+        case 1:
+          tmp.bri = valueLamp[i];
+          break;
+        case 2:
+          tmp.hue = valueLamp[i];
+          break;
+        case 3:
+          tmp.sat = valueLamp[i];
+          break;
+      }
+
+      // print("$lampNumber ${tmp.state} ${tmp.bri} ${tmp.hue} ${tmp.sat}");
+
+      listLamp[int.parse(lampNumber) - 1] =
+          tmp; // Convert the String to an int and update the value in the map
+
+      for (int i = 0; i < listLamp.length; i++) {
+        print(
+            "$i ${listLamp[i].state} ${listLamp[i].bri} ${listLamp[i].hue} ${listLamp[i].sat}");
+      }
+    }
   }
 
   void _subscribeToTopic(String topic) {
@@ -715,14 +803,17 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  void _unsubscribeFromTopic(String topic) {
-    if (connectionState == MqttConnectionState.connected) {
-      setState(() {
-        if (topics.remove(topic.trim())) {
-          print('Unsubscribing from ${topic.trim()}');
-          client.unsubscribe(topic);
-        }
-      });
-    }
+  void messageReact(List<MqttReceivedMessage> event) {
+    final MqttPublishMessage recMess = event[0].payload as MqttPublishMessage;
+    final String message =
+        MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+    setState(() {
+      messages = Message(
+        topic: event[0].topic,
+        message: message,
+        qos: recMess.payload.header.qos,
+      );
+      messageToLamp(messages.message);
+    });
   }
 }
